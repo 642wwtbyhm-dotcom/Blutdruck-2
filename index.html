@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Blutdruck Tracker</title>
+    <!-- Apple Web App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        :root {
+            --primary: #ff4757;
+            --bg: #f1f2f6;
+            --card: #ffffff;
+            --text: #2f3542;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .input-wrapper {
+            flex: 1;
+        }
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px; /* Verhindert Auto-Zoom in iOS */
+            box-sizing: border-box;
+            -webkit-appearance: none;
+        }
+        button {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: 0 4px 10px rgba(255, 71, 87, 0.3);
+        }
+        button:active {
+            background-color: #e0404e;
+        }
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .history-item {
+            background: var(--card);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .values {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .values .pulse {
+            font-size: 14px;
+            color: #747d8c;
+            font-weight: normal;
+            margin-left: 8px;
+        }
+        .timestamp {
+            font-size: 12px;
+            color: #a4b0be;
+            text-align: right;
+        }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #ff6b81;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 5px;
+            box-shadow: none;
+            width: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Blutdruck Tracker</h1>
+    
+    <!-- Eingabe-Formular -->
+    <div class="card">
+        <div class="form-group">
+            <div class="input-wrapper">
+                <label for="sys">Sys (Oben)</label>
+                <input type="number" id="sys" placeholder="120" pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="input-wrapper">
+                <label for="dia">Dia (Unten)</label>
+                <input type="number" id="dia" placeholder="80" pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="input-wrapper">
+                <label for="pulse">Puls</label>
+                <input type="number" id="pulse" placeholder="70" pattern="[0-9]*" inputmode="numeric">
+            </div>
+        </div>
+        <button onclick="saveData()">Speichern</button>
+    </div>
+
+    <!-- Verlauf -->
+    <h2>Verlauf</h2>
+    <div id="history">
+        <ul class="history-list" id="logList"></ul>
+    </div>
+</div>
+
+<script>
+    // 1. IndexedDB initialisieren
+    let db;
+    const request = indexedDB.open("BlutdruckDB", 1);
+
+    request.onupgradeneeded = function(event) {
+        db = event.target.result;
+        db.createObjectStore("messungen", { keyPath: "id", autoIncrement: true });
+    };
+
+    request.onsuccess = function(event) {
+        db = event.target.result;
+        displayData(); // Verlauf beim Start laden
+    };
+
+    request.onerror = function(event) {
+        console.error("Datenbankfehler: ", event.target.errorCode);
+    };
+
+    // 2. Daten speichern
+    function saveData() {
+        const sys = document.getElementById('sys').value;
+        const dia = document.getElementById('dia').value;
+        const pulse = document.getElementById('pulse').value;
+
+        if (!sys || !dia || !pulse) {
+            alert("Bitte alle Felder ausfüllen!");
+            return;
+        }
+
+        const neueMessung = {
+            sys: parseInt(sys),
+            dia: parseInt(dia),
+            pulse: parseInt(pulse),
+            timestamp: new Date().toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }),
+            rawDate: new Date().getTime() // Für die Sortierung
+        };
+
+        const transaction = db.transaction(["messungen"], "readwrite");
+        const store = transaction.objectStore("messungen");
+        store.add(neueMessung);
+
+        transaction.oncomplete = function() {
+            // Felder leeren
+            document.getElementById('sys').value = '';
+            document.getElementById('dia').value = '';
+            document.getElementById('pulse').value = '';
+            displayData(); // Liste aktualisieren
+        };
+    }
+
+    // 3. Daten anzeigen
+    function displayData() {
+        const logList = document.getElementById('logList');
+        logList.innerHTML = "";
+
+        const transaction = db.transaction(["messungen"], "readonly");
+        const store = transaction.objectStore("messungen");
+        const request = store.getAll();
+
+        request.onsuccess = function() {
+            const data = request.result;
+            // Neueste Messungen oben anzeigen
+            data.sort((a, b) => b.rawDate - a.rawDate);
+
+            data.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'history-item';
+                li.innerHTML = `
+                    <div>
+                        <span class="values">${item.sys}/${item.dia}</span>
+                        <span class="pulse">❤️ ${item.pulse}</span>
+                    </div>
+                    <div>
+                        <div class="timestamp">${item.timestamp}</div>
+                        <button class="delete-btn" onclick="deleteItem(${item.id})">Löschen</button>
+                    </div>
+                `;
+                logList.appendChild(li);
+            });
+        };
+    }
+
+    // 4. Eintrag löschen
+    function deleteItem(id) {
+        if(confirm("Eintrag wirklich löschen?")) {
+            const transaction = db.transaction(["messungen"], "readwrite");
+            const store = transaction.objectStore("messungen");
+            store.delete(id);
+            transaction.oncomplete = function() {
+                displayData();
+            };
+        }
+    }
+</script>
+</body>
+</html>
