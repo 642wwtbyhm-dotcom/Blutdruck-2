@@ -3,67 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Blutdruck Tracker</title>
-    <!-- Apple Web App Meta Tags -->
+    <title>Blutdruck Tracker Pro</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #ff4757;
+            --secondary: #2f3542;
             --bg: #f1f2f6;
             --card: #ffffff;
             --text: #2f3542;
+            --accent: #5352ed;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg);
             color: var(--text);
             margin: 0;
-            padding: 20px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
         .container {
             width: 100%;
-            max-width: 400px;
+            max-width: 430px;
+            box-sizing: border-box;
         }
         h1 {
             text-align: center;
-            font-size: 24px;
-            margin-bottom: 20px;
+            font-size: 22px;
+            margin-bottom: 15px;
             color: var(--primary);
+        }
+        h2 {
+            font-size: 18px;
+            margin-top: 20px;
+            margin-bottom: 10px;
         }
         .card {
             background: var(--card);
             border-radius: 16px;
-            padding: 20px;
+            padding: 15px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-        }
-        .form-group {
-            display: flex;
-            gap: 15px;
             margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
         }
         .input-wrapper {
             flex: 1;
         }
         label {
             display: block;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             text-transform: uppercase;
             opacity: 0.7;
         }
-        input {
+        input, select {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border: 1px solid #ddd;
             border-radius: 8px;
-            font-size: 16px; /* Verhindert Auto-Zoom in iOS */
+            font-size: 16px;
             box-sizing: border-box;
+            background-color: #fff;
             -webkit-appearance: none;
         }
         button {
@@ -71,183 +81,310 @@
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 14px;
+            padding: 12px;
             border-radius: 8px;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            transition: background 0.2s;
-            box-shadow: 0 4px 10px rgba(255, 71, 87, 0.3);
+            box-shadow: 0 4px 10px rgba(255, 71, 87, 0.2);
         }
-        button:active {
-            background-color: #e0404e;
+        button:active { background-color: #e0404e; }
+        
+        /* Trend und Filter-Styles */
+        .trend-box {
+            text-align: center;
+            font-size: 15px;
+            font-weight: bold;
+            padding: 10px;
+            background: #eccc68;
+            color: #2f3542;
+            border-radius: 10px;
+            margin-bottom: 15px;
         }
-        .history-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
         }
+        .filter-btn {
+            flex: 1;
+            background-color: #ced6e0;
+            color: var(--text);
+            padding: 8px;
+            font-size: 13px;
+            box-shadow: none;
+        }
+        .filter-btn.active {
+            background-color: var(--accent);
+            color: white;
+        }
+        .chart-container {
+            position: relative;
+            height: 200px;
+            width: 100%;
+        }
+        
+        /* Liste */
+        .history-list { list-style: none; padding: 0; margin: 0; }
         .history-item {
             background: var(--card);
-            padding: 15px;
+            padding: 12px;
             border-radius: 12px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.02);
         }
-        .values {
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .values .pulse {
-            font-size: 14px;
-            color: #747d8c;
-            font-weight: normal;
-            margin-left: 8px;
-        }
-        .timestamp {
-            font-size: 12px;
-            color: #a4b0be;
-            text-align: right;
-        }
+        .values { font-size: 17px; font-weight: bold; }
+        .sub-info { font-size: 13px; color: #747d8c; margin-top: 2px; }
+        .timestamp { font-size: 11px; color: #a4b0be; text-align: right; }
         .delete-btn {
-            background: none;
-            border: none;
-            color: #ff6b81;
-            font-size: 14px;
-            cursor: pointer;
-            padding: 5px;
-            box-shadow: none;
-            width: auto;
+            background: none; border: none; color: #ff6b81;
+            font-size: 13px; cursor: pointer; padding: 5px 0 0 0;
+            width: auto; box-shadow: none; text-align: right; display: block;
         }
+        .btn-export { background-color: var(--secondary); margin-top: 15px; margin-bottom: 30px; box-shadow: none;}
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Blutdruck Tracker</h1>
+    <h1>Blutdruck Tracker Pro</h1>
     
-    <!-- Eingabe-Formular -->
+    <div id="trendDisplay" class="trend-box">Trend zur aktuellen Uhrzeit: Berechne...</div>
+
     <div class="card">
-        <div class="form-group">
+        <div class="form-row">
             <div class="input-wrapper">
-                <label for="sys">Sys (Oben)</label>
-                <input type="number" id="sys" placeholder="120" pattern="[0-9]*" inputmode="numeric">
+                <label for="sys">Sys</label>
+                <input type="number" id="sys" placeholder="120" inputmode="numeric">
             </div>
             <div class="input-wrapper">
-                <label for="dia">Dia (Unten)</label>
-                <input type="number" id="dia" placeholder="80" pattern="[0-9]*" inputmode="numeric">
+                <label for="dia">Dia</label>
+                <input type="number" id="dia" placeholder="80" inputmode="numeric">
             </div>
             <div class="input-wrapper">
                 <label for="pulse">Puls</label>
-                <input type="number" id="pulse" placeholder="70" pattern="[0-9]*" inputmode="numeric">
+                <input type="number" id="pulse" placeholder="70" inputmode="numeric">
+            </div>
+            <div class="input-wrapper">
+                <label for="pille">Pille</label>
+                <select id="pille">
+                    <option value="0">0</option>
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                </select>
             </div>
         </div>
         <button onclick="saveData()">Speichern</button>
     </div>
 
-    <!-- Verlauf -->
-    <h2>Verlauf</h2>
-    <div id="history">
-        <ul class="history-list" id="logList"></ul>
+    <h2>Diagramm</h2>
+    <div class="card">
+        <div class="filter-buttons">
+            <button class="filter-btn active" id="btn-woche" onclick="changePeriod('woche')">Woche</button>
+            <button class="filter-btn" id="btn-monat" onclick="changePeriod('monat')">Monat</button>
+            <button class="filter-btn" id="btn-alles" onclick="changePeriod('alles')">Alles</button>
+        </div>
+        <div class="chart-container">
+            <canvas id="bpChart"></canvas>
+        </div>
     </div>
+
+    <h2>Verlauf</h2>
+    <ul class="history-list" id="logList"></ul>
+
+    <button class="btn-export" onclick="exportToCSV()">Daten als CSV exportieren</button>
 </div>
 
 <script>
-    // 1. IndexedDB initialisieren
     let db;
-    const request = indexedDB.open("BlutdruckDB", 1);
+    let currentPeriod = 'woche';
+    let myChart = null;
 
-    request.onupgradeneeded = function(event) {
-        db = event.target.result;
+    const request = indexedDB.open("BlutdruckDBPro", 1);
+    request.onupgradeneeded = (e) => {
+        db = e.target.result;
         db.createObjectStore("messungen", { keyPath: "id", autoIncrement: true });
     };
-
-    request.onsuccess = function(event) {
-        db = event.target.result;
-        displayData(); // Verlauf beim Start laden
+    request.onsuccess = (e) => {
+        db = e.target.result;
+        updateApp();
     };
 
-    request.onerror = function(event) {
-        console.error("Datenbankfehler: ", event.target.errorCode);
-    };
+    function updateApp() {
+        displayData();
+        updateChart();
+        calculateTrend();
+    }
 
-    // 2. Daten speichern
     function saveData() {
         const sys = document.getElementById('sys').value;
         const dia = document.getElementById('dia').value;
         const pulse = document.getElementById('pulse').value;
+        const pille = document.getElementById('pille').value;
 
-        if (!sys || !dia || !pulse) {
-            alert("Bitte alle Felder ausfüllen!");
-            return;
-        }
+        if (!sys || !dia || !pulse) { alert("Bitte ausfüllen!"); return; }
 
+        const jetzt = new Date();
         const neueMessung = {
-            sys: parseInt(sys),
-            dia: parseInt(dia),
-            pulse: parseInt(pulse),
-            timestamp: new Date().toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }),
-            rawDate: new Date().getTime() // Für die Sortierung
+            sys: parseInt(sys), dia: parseInt(dia), pulse: parseInt(pulse), pille: parseInt(pille),
+            timestamp: jetzt.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }),
+            rawDate: jetzt.getTime(),
+            hour: jetzt.getHours(),
+            minute: jetzt.getMinutes()
         };
 
-        const transaction = db.transaction(["messungen"], "readwrite");
-        const store = transaction.objectStore("messungen");
-        store.add(neueMessung);
-
-        transaction.oncomplete = function() {
-            // Felder leeren
+        const tx = db.transaction(["messungen"], "readwrite");
+        tx.objectStore("messungen").add(neueMessung);
+        tx.oncomplete = () => {
             document.getElementById('sys').value = '';
             document.getElementById('dia').value = '';
-            document.getElementById('pulse').value = '';
-            displayData(); // Liste aktualisieren
+            document.getElementById('pille').value = '1';
+            updateApp();
         };
     }
 
-    // 3. Daten anzeigen
     function displayData() {
         const logList = document.getElementById('logList');
         logList.innerHTML = "";
-
-        const transaction = db.transaction(["messungen"], "readonly");
-        const store = transaction.objectStore("messungen");
-        const request = store.getAll();
-
-        request.onsuccess = function() {
-            const data = request.result;
-            // Neueste Messungen oben anzeigen
-            data.sort((a, b) => b.rawDate - a.rawDate);
-
+        const tx = db.transaction(["messungen"], "readonly");
+        tx.objectStore("messungen").getAll().onsuccess = (e) => {
+            const data = e.target.result.sort((a,b) => b.rawDate - a.rawDate);
             data.forEach(item => {
                 const li = document.createElement('li');
                 li.className = 'history-item';
                 li.innerHTML = `
                     <div>
-                        <span class="values">${item.sys}/${item.dia}</span>
-                        <span class="pulse">❤️ ${item.pulse}</span>
+                        <div class="values">${item.sys}/${item.dia}</div>
+                        <div class="sub-info">❤️ ${item.pulse} bpm | 💊 Pille: ${item.pille}</div>
                     </div>
                     <div>
                         <div class="timestamp">${item.timestamp}</div>
                         <button class="delete-btn" onclick="deleteItem(${item.id})">Löschen</button>
-                    </div>
-                `;
+                    </div>`;
                 logList.appendChild(li);
             });
         };
     }
 
-    // 4. Eintrag löschen
     function deleteItem(id) {
-        if(confirm("Eintrag wirklich löschen?")) {
-            const transaction = db.transaction(["messungen"], "readwrite");
-            const store = transaction.objectStore("messungen");
-            store.delete(id);
-            transaction.oncomplete = function() {
-                displayData();
-            };
+        if(confirm("Löschen?")) {
+            const tx = db.transaction(["messungen"], "readwrite");
+            tx.objectStore("messungen").delete(id);
+            tx.oncomplete = () => updateApp();
         }
+    }
+
+    function changePeriod(period) {
+        currentPeriod = period;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`btn-${period}`).classList.add('active');
+        updateChart();
+    }
+
+    function updateChart() {
+        const tx = db.transaction(["messungen"], "readonly");
+        tx.objectStore("messungen").getAll().onsuccess = (e) => {
+            let data = e.target.result.sort((a,b) => a.rawDate - b.rawDate);
+            const jetzt = new Date().getTime();
+            
+            if (currentPeriod === 'woche') {
+                data = data.filter(i => (jetzt - i.rawDate) <= 7 * 24 * 60 * 60 * 1000);
+            } else if (currentPeriod === 'monat') {
+                data = data.filter(i => (jetzt - i.rawDate) <= 30 * 24 * 60 * 60 * 1000);
+            }
+
+            const labels = data.map(i => i.timestamp.split(',')[0]);
+            const sysValues = data.map(i => i.sys);
+            const diaValues = data.map(i => i.dia);
+
+            if (myChart) myChart.destroy();
+
+            const ctx = document.getElementById('bpChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Sys', data: sysValues, borderColor: '#ff4757', tension: 0.2, fill: false },
+                        { label: 'Dia', data: diaValues, borderColor: '#5352ed', tension: 0.2, fill: false }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { min: 40, max: 200 } },
+                    plugins: { legend: { position: 'top' } }
+                }
+            });
+        };
+    }
+
+    function calculateTrend() {
+        const tx = db.transaction(["messungen"], "readonly");
+        tx.objectStore("messungen").getAll().onsuccess = (e) => {
+            const data = e.target.result;
+            if (data.length < 2) {
+                document.getElementById('trendDisplay').innerText = "Trend: Mehr Messungen benötigt";
+                return;
+            }
+
+            const jetzt = new Date();
+            const aktuelleMinuten = jetzt.getHours() * 60 + jetzt.getMinutes();
+
+            // Filtere Messungen, die innerhalb von +-60 Minuten der aktuellen Uhrzeit liegen
+            let passendeMessungen = data.filter(item => {
+                const messungMinuten = item.hour * 60 + item.minute;
+                let diff = Math.abs(aktuelleMinuten - messungMinuten);
+                return diff <= 60 || diff >= (24 * 60 - 60); 
+            });
+
+            // Sortiere nach Datum (neueste zuerst) und nimm die letzten 3
+            passendeMessungen.sort((a,b) => b.rawDate - a.rawDate);
+            const relevante = passendeMessungen.slice(0, 3);
+
+            if (relevante.length < 2) {
+                document.getElementById('trendDisplay').innerText = "Trend: Keine vergleichbare Uhrzeit im Verlauf";
+                return;
+            }
+
+            // Berechne ob der Durchschnitt der letzten Werte steigt oder sinkt
+            let sysTrend = "";
+            if (relevante.length >= 2) {
+                const aktuell = relevante[0].sys;
+                const vorher = relevante[1].sys;
+                
+                if (aktuell > vorher + 4) sysTrend = "⬆️ steigend";
+                else if (aktuell < vorher - 4) sysTrend = "⬇️ sinkend";
+                else sysTrend = "➡️ stabil";
+            }
+
+            document.getElementById('trendDisplay').innerText = `Trend (um ca. ${jetzt.getHours()}:${String(jetzt.getMinutes()).padStart(2,'0')} Uhr): ${sysTrend}`;
+        };
+    }
+
+    function exportToCSV() {
+        const tx = db.transaction(["messungen"], "readonly");
+        tx.objectStore("messungen").getAll().onsuccess = (e) => {
+            const data = e.target.result.sort((a,b) => a.rawDate - b.rawDate);
+            if (data.length === 0) { alert("Keine Daten!"); return; }
+
+            let csv = "Datum & Uhrzeit;Systolisch (Oben);Diastolisch (Unten);Puls (bpm);Pille\r\n";
+            data.forEach(i => {
+                csv += `"${i.timestamp}";${i.sys};${i.dia};${i.pulse};${i.pille}\r\n`;
+            });
+
+            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "blutdruck_pro_export.csv";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
     }
 </script>
 </body>
