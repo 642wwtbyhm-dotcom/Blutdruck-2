@@ -90,7 +90,6 @@
         }
         button:active { background-color: #e0404e; }
         
-        /* Trend und Filter-Styles */
         .trend-box {
             text-align: center;
             font-size: 15px;
@@ -124,6 +123,20 @@
             width: 100%;
         }
         
+        /* Verlauf-Header mit Export-Button darunter */
+        .verlauf-header {
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .btn-export { 
+            background-color: var(--secondary); 
+            margin-bottom: 15px; 
+            box-shadow: none;
+            font-size: 14px;
+            padding: 10px;
+        }
+        .btn-export:active { background-color: #1e222b; }
+
         /* Liste */
         .history-list { list-style: none; padding: 0; margin: 0; }
         .history-item {
@@ -144,7 +157,6 @@
             font-size: 13px; cursor: pointer; padding: 5px 0 0 0;
             width: auto; box-shadow: none; text-align: right; display: block;
         }
-        .btn-export { background-color: var(--secondary); margin-top: 15px; margin-bottom: 30px; box-shadow: none;}
     </style>
 </head>
 <body>
@@ -158,15 +170,15 @@
         <div class="form-row">
             <div class="input-wrapper">
                 <label for="sys">Sys</label>
-                <input type="number" id="sys" placeholder="120" inputmode="numeric">
+                <input type="number" id="sys" placeholder="120" inputmode="numeric" oninput="checkLength(this, 3, 'dia')">
             </div>
             <div class="input-wrapper">
                 <label for="dia">Dia</label>
-                <input type="number" id="dia" placeholder="80" inputmode="numeric">
+                <input type="number" id="dia" placeholder="80" inputmode="numeric" oninput="checkLength(this, 2, 'pulse')">
             </div>
             <div class="input-wrapper">
                 <label for="pulse">Puls</label>
-                <input type="number" id="pulse" placeholder="70" inputmode="numeric">
+                <input type="number" id="pulse" placeholder="70" inputmode="numeric" oninput="checkLength(this, 2, 'pille')">
             </div>
             <div class="input-wrapper">
                 <label for="pille">Pille</label>
@@ -192,16 +204,30 @@
         </div>
     </div>
 
-    <h2>Verlauf</h2>
+    <div class="verlauf-header">
+        <h2>Verlauf</h2>
+        <button class="btn-export" onclick="exportToCSV()">Daten als CSV exportieren</button>
+    </div>
+    
     <ul class="history-list" id="logList"></ul>
-
-    <button class="btn-export" onclick="exportToCSV()">Daten als CSV exportieren</button>
 </div>
 
 <script>
     let db;
     let currentPeriod = 'woche';
     let myChart = null;
+
+    // Funktion für den automatischen Cursorsprung
+    function checkLength(element, maxLength, nextElementId) {
+        if (element.value.length >= maxLength) {
+            // Schneidet Eingaben ab, falls der Nutzer mehr eingibt
+            element.value = element.value.slice(0, maxLength); 
+            const nextEl = document.getElementById(nextElementId);
+            if (nextEl) {
+                nextEl.focus();
+            }
+        }
+    }
 
     const request = indexedDB.open("BlutdruckDBPro", 1);
     request.onupgradeneeded = (e) => {
@@ -241,8 +267,11 @@
         tx.oncomplete = () => {
             document.getElementById('sys').value = '';
             document.getElementById('dia').value = '';
+            document.getElementById('pulse').value = '';
             document.getElementById('pille').value = '1';
             updateApp();
+            // Cursor nach dem Speichern wieder ins erste Feld setzen
+            document.getElementById('sys').focus();
         };
     }
 
@@ -334,14 +363,12 @@
             const jetzt = new Date();
             const aktuelleMinuten = jetzt.getHours() * 60 + jetzt.getMinutes();
 
-            // Filtere Messungen, die innerhalb von +-60 Minuten der aktuellen Uhrzeit liegen
             let passendeMessungen = data.filter(item => {
                 const messungMinuten = item.hour * 60 + item.minute;
                 let diff = Math.abs(aktuelleMinuten - messungMinuten);
                 return diff <= 60 || diff >= (24 * 60 - 60); 
             });
 
-            // Sortiere nach Datum (neueste zuerst) und nimm die letzten 3
             passendeMessungen.sort((a,b) => b.rawDate - a.rawDate);
             const relevante = passendeMessungen.slice(0, 3);
 
@@ -350,7 +377,6 @@
                 return;
             }
 
-            // Berechne ob der Durchschnitt der letzten Werte steigt oder sinkt
             let sysTrend = "";
             if (relevante.length >= 2) {
                 const aktuell = relevante[0].sys;
@@ -369,7 +395,7 @@
         const tx = db.transaction(["messungen"], "readonly");
         tx.objectStore("messungen").getAll().onsuccess = (e) => {
             const data = e.target.result.sort((a,b) => a.rawDate - b.rawDate);
-            if (data.length === 0) { alert("Keine Daten!"); return; }
+            if (data.length === 0) { alert("Keine Daten vorhanden!"); return; }
 
             let csv = "Datum & Uhrzeit;Systolisch (Oben);Diastolisch (Unten);Puls (bpm);Pille\r\n";
             data.forEach(i => {
