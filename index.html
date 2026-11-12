@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Blutdruck 4</title>
+    <title>Blutdruck 3.2</title>
     <!-- Apple Web App Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Blutdruck 4">
+    <meta name="apple-mobile-web-app-title" content="Blutdruck 3.2">
     <!-- Chart.js und date-fns Adapter für die zeitgenaue Skalierung -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
@@ -244,7 +244,7 @@
 <body>
 
 <div class="container">
-    <h1>Blutdruck 4</h1>
+    <h1>Blutdruck 3.2</h1>
     
     <!-- Trend-Anzeige -->
     <div id="trendDisplay" class="trend-box">Trend zur aktuellen Uhrzeit: Berechne...</div>
@@ -468,7 +468,7 @@
                         <div class="timestamp">${item.timestamp}</div>
                         <div class="values-row">
                             <span class="values">${item.sys}/${item.dia}</span>
-                            <span class="sub-info">❤ ${item.pulse} | 💊 ${item.pille}</span>
+                            <span class="sub-info">❤️ ${item.pulse} | 💊 ${item.pille}</span>
                         </div>
                     </div>
                     <div class="item-actions">
@@ -523,7 +523,7 @@
                     datasets: [
                         { label: 'Sys', data: sysData, borderColor: '#ff4757', tension: 0.2, fill: false },
                         { label: 'Dia', data: diaData, borderColor: '#5352ed', tension: 0.2, fill: false },
-                        { label: 'Puls', data: pulseData, borderColor: '#2ed573', borderDash: [5, 5], tension: 0.2, fill: false }
+                        { label: 'Puls', data: pulseData, borderColor: '#ffa502', borderDash: [5, 5], tension: 0.2, fill: false }
                     ]
                 },
                 options: {
@@ -546,190 +546,4 @@
                         y: { min: 40, max: 200 }
                     },
                     plugins: { 
-                        legend: { position: 'top' },
-                        tooltip: {
-                            callbacks: {
-                                title: (items) => {
-                                    if (!items.length) return '';
-                                    const d = new Date(items[0].parsed.x);
-                                    return d.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        };
-    }
-
-    function calculateTrend() {
-        const tx = db.transaction(["messungen"], "readonly");
-        tx.objectStore("messungen").getAll().onsuccess = (e) => {
-            const data = e.target.result;
-            if (data.length < 2) {
-                document.getElementById('trendDisplay').innerText = "Trend: Mehr Messungen benötigt";
-                return;
-            }
-
-            const jetzt = new Date();
-            const schnelleUhrzeit = `${jetzt.getHours()}:${String(jetzt.getMinutes()).padStart(2,'0')}`;
-            const aktuelleMinuten = jetzt.getHours() * 60 + jetzt.getMinutes();
-
-            let passendeMessungen = data.filter(item => {
-                const messungMinuten = item.hour * 60 + item.minute;
-                let diff = Math.abs(aktuelleMinuten - messungMinuten);
-                return diff <= 60 || diff >= (24 * 60 - 60); 
-            });
-
-            passendeMessungen.sort((a,b) => b.rawDate - a.rawDate);
-            const relevante = passendeMessungen.slice(0, 3);
-
-            if (relevante.length < 2) {
-                document.getElementById('trendDisplay').innerText = "Trend: Keine vergleichbare Uhrzeit im Verlauf";
-                return;
-            }
-
-            let sysTrend = "";
-            if (relevante.length >= 2) {
-                const aktuell = relevante[0].sys;
-                const vorher = relevante[1].sys;
-                
-                if (aktuell > vorher + 4) sysTrend = "⬆️ steigend";
-                else if (aktuell < vorher - 4) sysTrend = "⬇️ sinkend";
-                else sysTrend = "➡️ stabil";
-            }
-
-            document.getElementById('trendDisplay').innerText = `Trend (um ca. ${schnelleUhrzeit} Uhr): ${sysTrend}`;
-        };
-    }
-
-    function exportToCSV() {
-        const tx = db.transaction(["messungen"], "readonly");
-        tx.objectStore("messungen").getAll().onsuccess = (e) => {
-            const data = e.target.result.sort((a,b) => a.rawDate - b.rawDate);
-            if (data.length === 0) { alert("Keine Daten vorhanden!"); return; }
-
-            let csv = "Datum & Uhrzeit;Systolisch (Oben);Diastolisch (Unten);Puls (bpm);Pille
-";
-            data.forEach(i => {
-                csv += `"${i.timestamp}";${i.sys};${i.dia};${i.pulse};${i.pille}
-`;
-            });
-
-            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = "blutdruck_pro_export.csv";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        };
-    }
-
-    // Präziser Datums-Parser für deutsche Zeitstempel aus der CSV
-    function parseGermanDateTime(str) {
-        if (!str) return null;
-        str = str.replace(/"/g, '').trim();
-
-        // Zerlege Datum und Zeit anhand von Leerzeichen oder Komma
-        const parts = str.split(/[\s,]+/);
-        if (parts.length >= 2) {
-            const datePart = parts[0]; // z. B. "29.09.26" oder "29.09.2026"
-            const timePart = parts[1]; // z. B. "14:30"
-
-            const dateSub = datePart.split('.');
-            const timeSub = timePart.split(':');
-
-            if (dateSub.length === 3 && timeSub.length >= 2) {
-                let day = parseInt(dateSub[0], 10);
-                let month = parseInt(dateSub[1], 10) - 1; // 0-indiziert
-                let year = parseInt(dateSub[2], 10);
-
-                // Zweistellige Jahreszahlen umwandeln (z.B. 26 -> 2026)
-                if (year < 100) {
-                    year += 2000;
-                }
-
-                let hour = parseInt(timeSub[0], 10);
-                let minute = parseInt(timeSub[1], 10);
-
-                if (!isNaN(day) && !isNaN(month) && !isNaN(year) && !isNaN(hour) && !isNaN(minute)) {
-                    return new Date(year, month, day, hour, minute);
-                }
-            }
-        }
-
-        // Fallback für Standard ISO-Strings
-        const timeNum = Date.parse(str);
-        if (!isNaN(timeNum)) {
-            return new Date(timeNum);
-        }
-
-        return null;
-    }
-
-    // Korrigierte Funktion zum Importieren von CSV-Daten
-    function importFromCSV(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const content = e.target.result;
-            const lines = content.split(/
-|
-/);
-            
-            let countImported = 0;
-            const tx = db.transaction(["messungen"], "readwrite");
-            const store = tx.objectStore("messungen");
-
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-
-                // Spalten verarbeiten (Trennzeichen ; oder ,)
-                const parts = line.split(/;|,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
-                if (parts.length >= 4) {
-                    const rawTimestamp = parts[0].replace(/"/g, '').trim();
-                    const sys = parseInt(parts[1].trim());
-                    const dia = parseInt(parts[2].trim());
-                    const pulse = parseInt(parts[3].trim());
-                    const pille = parts[4] ? parseInt(parts[4].trim()) : 0;
-
-                    if (!isNaN(sys) && !isNaN(dia) && !isNaN(pulse)) {
-                        // Liest das ursprüngliche Datum und Uhrzeit aus der Datei
-                        const parsedDate = parseGermanDateTime(rawTimestamp);
-
-                        if (parsedDate && !isNaN(parsedDate.getTime())) {
-                            const messung = {
-                                sys: sys,
-                                dia: dia,
-                                pulse: pulse,
-                                pille: isNaN(pille) ? 0 : pille,
-                                timestamp: parsedDate.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }),
-                                rawDate: parsedDate.getTime(),
-                                hour: parsedDate.getHours(),
-                                minute: parsedDate.getMinutes()
-                            };
-
-                            store.add(messung);
-                            countImported++;
-                        }
-                    }
-                }
-            }
-
-            tx.oncomplete = () => {
-                alert(`${countImported} Messwert(e) erfolgreich importiert!`);
-                event.target.value = ''; // Input zurücksetzen
-                updateApp();
-            };
-        };
-
-        reader.readAsText(file, 'UTF-8');
-    }
-</script>
-</body>
-</html>
+                        legend: { position
