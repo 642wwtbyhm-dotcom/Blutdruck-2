@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Blutdruck 3.3</title>
+    <title>Blutdruck 4</title>
     <!-- Apple Web App Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Blutdruck 3.2">
+    <meta name="apple-mobile-web-app-title" content="Blutdruck 4">
     <!-- Chart.js und date-fns Adapter für die zeitgenaue Skalierung -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
@@ -244,7 +244,7 @@
 <body>
 
 <div class="container">
-    <h1>Blutdruck 3.2</h1>
+    <h1>Blutdruck 4</h1>
     
     <!-- Trend-Anzeige -->
     <div id="trendDisplay" class="trend-box">Trend zur aktuellen Uhrzeit: Berechne...</div>
@@ -468,7 +468,7 @@
                         <div class="timestamp">${item.timestamp}</div>
                         <div class="values-row">
                             <span class="values">${item.sys}/${item.dia}</span>
-                            <span class="sub-info">❤️️ ${item.pulse} | 💊 ${item.pille}</span>
+                            <span class="sub-info">❤ ${item.pulse} | 💊 ${item.pille}</span>
                         </div>
                     </div>
                     <div class="item-actions">
@@ -512,6 +512,7 @@
 
             const sysData = data.map(i => ({ x: i.rawDate, y: i.sys }));
             const diaData = data.map(i => ({ x: i.rawDate, y: i.dia }));
+            const pulseData = data.map(i => ({ x: i.rawDate, y: i.pulse }));
 
             if (myChart) myChart.destroy();
 
@@ -521,7 +522,8 @@
                 data: {
                     datasets: [
                         { label: 'Sys', data: sysData, borderColor: '#ff4757', tension: 0.2, fill: false },
-                        { label: 'Dia', data: diaData, borderColor: '#5352ed', tension: 0.2, fill: false }
+                        { label: 'Dia', data: diaData, borderColor: '#5352ed', tension: 0.2, fill: false },
+                        { label: 'Puls', data: pulseData, borderColor: '#2ed573', borderDash: [5, 5], tension: 0.2, fill: false }
                     ]
                 },
                 options: {
@@ -607,9 +609,11 @@
             const data = e.target.result.sort((a,b) => a.rawDate - b.rawDate);
             if (data.length === 0) { alert("Keine Daten vorhanden!"); return; }
 
-            let csv = "Datum & Uhrzeit;Systolisch (Oben);Diastolisch (Unten);Puls (bpm);Pille\r\n";
+            let csv = "Datum & Uhrzeit;Systolisch (Oben);Diastolisch (Unten);Puls (bpm);Pille
+";
             data.forEach(i => {
-                csv += `"${i.timestamp}";${i.sys};${i.dia};${i.pulse};${i.pille}\r\n`;
+                csv += `"${i.timestamp}";${i.sys};${i.dia};${i.pulse};${i.pille}
+`;
             });
 
             const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
@@ -673,7 +677,9 @@
         const reader = new FileReader();
         reader.onload = function(e) {
             const content = e.target.result;
-            const lines = content.split(/\r\n|\n/);
+            const lines = content.split(/
+|
+/);
             
             let countImported = 0;
             const tx = db.transaction(["messungen"], "readwrite");
@@ -684,7 +690,7 @@
                 if (!line) continue;
 
                 // Spalten verarbeiten (Trennzeichen ; oder ,)
-                const parts = line.split(/;|,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/);
+                const parts = line.split(/;|,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
                 if (parts.length >= 4) {
                     const rawTimestamp = parts[0].replace(/"/g, '').trim();
                     const sys = parseInt(parts[1].trim());
